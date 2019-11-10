@@ -10,6 +10,7 @@ admin.initializeApp(functions.config().firebase);
 const fireStore = admin.firestore();
 
 const time_to_expire_skyway_id = 604800;
+const sky_radius = 100;
 
 const app = express();
 
@@ -29,8 +30,7 @@ app.post('/waiters', (req, res) => {
   const x :number = req.body.x;
   const y :number = req.body.y;
   const z :number = req.body.z;
-  const expire_date = new Date();
-  expire_date.setSeconds(expire_date.getSeconds() + time_to_expire_skyway_id);
+  
 
   // search firestore;
   fireStore.collection('waiters_test')
@@ -39,41 +39,42 @@ app.post('/waiters', (req, res) => {
     .get()
     .then(querySnapshot => {
       if (querySnapshot.empty) {
-        // create new record.
-        const data = {
-          skyway_id: skyway_id
-          ,x: x
-          ,y: y
-          ,z: z
-          ,expired_at: admin.firestore.Timestamp.fromDate(expire_date)
-        }
-        fireStore.collection('waiters_test')
-          .doc(skyway_id)
-          .set(data)
-          .then(result => {
-            res.send({
-              status: 'keep wait.'
-              ,skyway_id: null
-              ,created_data: data
-              ,response: result
-            });
-          })
-          .catch(err => {
-            res.status(400)
-              .send({
-                status: 'error',
-                response: err
-              });
-          })
+        console.log('Empty QuerySnapshot');
+        add_waiter(skyway_id, x, y, z, (ret: any) => {
+          res.status(ret.status).send(ret.response);
+        });
       } else {
-        // docs more than 1 was found.
+        console.log('Search QuerySnapshot. length:' + querySnapshot.size);
+        let closest_doc_data: any = null;
+        let closest_dist: number = 2 * sky_radius;
+        let count = 0;
         querySnapshot.forEach(doc => {
+          const data = doc.data();
+          const distance = Math.sqrt(Math.pow(data.x-x, 2) + Math.pow(data.y-y, 2) + Math.pow(data.z-z, 2));
+          if (distance <= sky_radius/10) {
+            if (distance < closest_dist){
+              closest_dist = distance;
+              closest_doc_data = doc;
+            }
+          }
+          count++;
+        });
+
+        console.log('QuerySnapshot Search Finished. count:' + count);
+        if (closest_doc_data != null) {
+          console.log('Return matched document.');
           res.send({
             status: 'found.'
-            ,skyway_id: doc.id
-            ,doc: doc.data()
+            ,skyway_id: closest_doc_data.id
+            ,doc: closest_doc_data.data()
           });
-        });
+          
+        } else {
+          console.log('Valid document not found.');
+          add_waiter(skyway_id, x, y, z, (ret: any) => {
+            res.status(ret.status).send(ret.response);
+          });
+        }
       }
     })
     .catch(err => {
@@ -83,6 +84,48 @@ app.post('/waiters', (req, res) => {
       });
     });
 });
+
+function add_waiter(skyway_id: string, x: number, y: number, z: number, callback: Function): any {
+  const expire_date = new Date();
+  expire_date.setSeconds(expire_date.getSeconds() + time_to_expire_skyway_id);
+
+  // create new record.
+  const data = {
+    skyway_id: skyway_id
+    ,x: x
+    ,y: y
+    ,z: z
+    ,expired_at: admin.firestore.Timestamp.fromDate(expire_date)
+  }
+  console.log(data);
+  fireStore.collection('waiters_test')
+    .doc(skyway_id)
+    .set(data)
+    .then(result => {
+      console.log('Set document succeeded.');
+      const ret = {
+        status: 200
+        ,response: {
+          status: 'keep wait.'
+          ,skyway_id: null
+          ,created_data: data
+          ,response: result
+        }
+      }
+      callback(ret);
+    })
+    .catch(err => {
+      console.log('Set document failed.');
+      const ret = {
+        status: 400
+        ,response: {
+          status: 'error',
+          response: err
+        }
+      }
+      callback(ret);
+    });
+}
 
 app.delete('/waiters', (req, res) => {
   const skyway_id = req.body.skyway_id;
