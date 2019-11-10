@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 app.post('/waiters', (req, res) => {
   console.log(req.body);
   const skyway_id = req.body.skyway_id;
-  let expire_date = new Date();
+  const expire_date = new Date();
   expire_date.setSeconds(expire_date.getSeconds() + 60);
 
   // search firestore;
