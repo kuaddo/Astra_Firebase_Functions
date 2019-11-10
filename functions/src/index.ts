@@ -9,6 +9,8 @@ import * as bodyParser from 'body-parser';
 admin.initializeApp(functions.config().firebase);
 const fireStore = admin.firestore();
 
+const time_to_expire_skyway_id = 604800;
+
 const app = express();
 
 app.use(bodyParser.json());
@@ -25,11 +27,12 @@ app.post('/waiters', (req, res) => {
   console.log(req.body);
   const skyway_id = req.body.skyway_id;
   const expire_date = new Date();
-  expire_date.setSeconds(expire_date.getSeconds() + 60);
+  expire_date.setSeconds(expire_date.getSeconds() + time_to_expire_skyway_id);
 
   // search firestore;
   fireStore.collection('waiters_test')
     .where('expired_at', '>', admin.firestore.Timestamp.fromDate(new Date(Date.now())))
+    .orderBy('expired_at', 'desc')
     .get()
     .then(querySnapshot => {
       if (querySnapshot.empty) {
