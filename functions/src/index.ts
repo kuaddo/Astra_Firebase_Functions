@@ -75,4 +75,26 @@ app.post('/waiters', (req, res) => {
     });
 });
 
+app.delete('/waiters', (req, res) => {
+  const skyway_id = req.body.skyway_id;
+  console.log('delete skyway_id: ' + skyway_id);
+
+  fireStore.collection('waiters_test')
+    .doc(skyway_id)
+    .delete()
+    .then(result => {
+      res.send({
+        status: 'successfully deleted.'
+        ,response: result
+      });
+    })
+    .catch(err => {
+      res.status(400)
+        .send({
+          status: 'error occured.'
+          ,response: err
+        });
+    });
+})
+
 exports.v1 = functions.https.onRequest(app);
