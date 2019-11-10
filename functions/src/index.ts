@@ -26,6 +26,9 @@ app.get('/', (req, res) => {
 app.post('/waiters', (req, res) => {
   console.log(req.body);
   const skyway_id = req.body.skyway_id;
+  const x :number = req.body.x;
+  const y :number = req.body.y;
+  const z :number = req.body.z;
   const expire_date = new Date();
   expire_date.setSeconds(expire_date.getSeconds() + time_to_expire_skyway_id);
 
@@ -39,6 +42,9 @@ app.post('/waiters', (req, res) => {
         // create new record.
         const data = {
           skyway_id: skyway_id
+          ,x: x
+          ,y: y
+          ,z: z
           ,expired_at: admin.firestore.Timestamp.fromDate(expire_date)
         }
         fireStore.collection('waiters_test')
