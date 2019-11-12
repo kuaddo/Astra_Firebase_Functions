@@ -10,6 +10,7 @@ admin.initializeApp(functions.config().firebase);
 const fireStore = admin.firestore();
 
 const time_to_expire_skyway_id = 604800;
+const COLLECTION_WAITERS = 'waiters_test'
 
 const app = express();
 
@@ -17,6 +18,32 @@ app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
   res.send({'status': 'ok'})
+});
+
+app.get('/waiters', (req, res) => {
+  console.log('GET /waiters');
+
+  // returns valid skyway_ids
+  fireStore.collection(COLLECTION_WAITERS)
+    .where('expired_at', '>', admin.firestore.Timestamp.fromDate(new Date(Date.now())))
+    .orderBy('expired_at', 'desc')
+    .get()
+    .then(querySnapshot => {
+      const rets: any = [];
+      querySnapshot.forEach(doc => {
+        rets.push({
+          'skyway_id': doc.id
+          ,doc: doc.data()
+        });
+      })
+      res.send(rets);
+    })
+    .catch(err => {
+      res.send({
+        status: 'query error',
+        response: err
+      });
+    });
 });
 
 /**
@@ -30,7 +57,7 @@ app.post('/waiters', (req, res) => {
   const theta :number = req.body.theta;
 
   // search firestore;
-  fireStore.collection('waiters_test')
+  fireStore.collection(COLLECTION_WAITERS)
     .where('expired_at', '>', admin.firestore.Timestamp.fromDate(new Date(Date.now())))
     .where('phi', '==', phi)
     .where('theta', '==', theta)
@@ -74,7 +101,7 @@ function add_waiter(skyway_id: string, phi: number, theta: number, callback: Fun
     ,expired_at: admin.firestore.Timestamp.fromDate(expire_date)
   }
   console.log(data);
-  fireStore.collection('waiters_test')
+  fireStore.collection(COLLECTION_WAITERS)
     .doc(skyway_id)
     .set(data)
     .then(result => {
@@ -107,7 +134,7 @@ app.delete('/waiters', (req, res) => {
   const skyway_id = req.body.skyway_id;
   console.log('delete skyway_id: ' + skyway_id);
 
-  fireStore.collection('waiters_test')
+  fireStore.collection(COLLECTION_WAITERS)
     .doc(skyway_id)
     .delete()
     .then(result => {
