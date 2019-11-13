@@ -56,8 +56,9 @@ app.post('/waiters', (req, res) => {
   const phi :number = req.body.phi;
   const theta :number = req.body.theta;
 
-  // search firestore;
-  fireStore.collection(COLLECTION_WAITERS)
+  // update firestore.
+  add_waiter(skyway_id, phi, theta, (ret: any) => {
+    fireStore.collection(COLLECTION_WAITERS)
     .where('expired_at', '>', admin.firestore.Timestamp.fromDate(new Date(Date.now())))
     .where('phi', '==', phi)
     .where('theta', '==', theta)
@@ -66,18 +67,32 @@ app.post('/waiters', (req, res) => {
     .then(querySnapshot => {
       if (querySnapshot.empty) {
         console.log('Empty QuerySnapshot');
-        add_waiter(skyway_id, phi, theta, (ret: any) => {
-          res.status(ret.status).send(ret.response);
-        });
+        res.send({
+          status: 'keep waiting.'
+          ,skyway_id: null
+        })
       } else {
         console.log("At least 1 document was found.");
+        let noDocFound: Boolean = true;
         querySnapshot.forEach((doc) => {
-          res.send({
-            status: 'found.'
-            ,skyway_id: doc.id
-            ,doc: doc.data()
-          });
+          console.log(doc.data().skyway_id + ' ' + skyway_id);
+          if (doc.data().skyway_id === skyway_id) {
+            // continue
+          } else {
+            noDocFound = false;
+            res.send({
+              status: 'found.'
+              ,skyway_id: doc.id
+              ,doc: doc.data()
+            });
+          }
         });
+        if (noDocFound) {
+          res.send({
+            status: 'keep waiting.'
+            ,skyway_id: null
+          });
+        }
       }
     })
     .catch(err => {
@@ -86,6 +101,7 @@ app.post('/waiters', (req, res) => {
         response: err
       });
     });
+  });
 });
 
 function add_waiter(skyway_id: string, phi: number, theta: number, callback: Function): any {
