@@ -11,6 +11,8 @@ const fireStore = admin.firestore();
 
 const time_to_expire_skyway_id = 604800;
 const COLLECTION_WAITERS = 'waiters_test'
+const COLLECTION_IMAGES: string = 'images';
+const SUB_COLLECTION_IMAGES: string = 'images';
 
 const app = express();
 
@@ -167,5 +169,61 @@ app.delete('/waiters', (req, res) => {
         });
     });
 })
+
+app.get('/images/:skyway_id', (req, res) => {
+  const skyway_id: string = req.params.skyway_id;
+  console.log('GET /images/' + skyway_id);
+
+  fireStore.collection(COLLECTION_IMAGES)
+    .doc(skyway_id)
+    .collection(SUB_COLLECTION_IMAGES)
+    .get()
+    .then(querySnapshot => {
+      const rets: any[] = []
+      querySnapshot.forEach(doc => {
+        rets.push({
+          image: doc.data().image
+        });
+      })
+      res.send(rets);
+    })
+    .catch(err => {
+      res.status(400).send({
+        status: 'Image request failed.'
+        ,response: err
+      });
+    });
+});
+
+app.post('/images/:skyway_id', (req, res) => {
+  const skyway_id: string = req.params.skyway_id;
+  console.log('POST /images/' + skyway_id);
+  const image: string = req.body.image;
+
+  const data = {
+    skyway_id: skyway_id
+    ,image: image
+    ,created_at: new Date(Date.now())
+  }
+
+  fireStore.collection(COLLECTION_IMAGES)
+    .doc(skyway_id)
+    .collection(SUB_COLLECTION_IMAGES)
+    .doc()
+    .set(data)
+    .then(result => {
+      res.send({
+        status: 'Image uploading succeeded.'
+        ,response: result
+      })
+    })
+    .catch(err => {
+      res.status(400)
+        .send({
+          status: 'Image uploading failed.'
+          ,response: err
+        });
+    });
+});
 
 exports.v1 = functions.https.onRequest(app);
