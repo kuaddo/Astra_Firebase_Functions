@@ -34,14 +34,15 @@ app.get('/waiters', (req, res) => {
       const rets: any = [];
       querySnapshot.forEach(doc => {
         rets.push({
-          'skyway_id': doc.id
-          ,doc: doc.data()
+          skyway_id: doc.id
+          ,phi: doc.data().phi
+          ,theta: doc.data().theta
         });
       })
       res.send(rets);
     })
     .catch(err => {
-      res.send({
+      res.status(400).send({
         status: 'query error',
         response: err
       });
@@ -53,7 +54,8 @@ app.get('/waiters', (req, res) => {
  * method: POST
  */
 app.post('/waiters', (req, res) => {
-  console.log(req.body);
+  // console.log(req.body);
+  console.log('POST /waiters');
   const skyway_id = req.body.skyway_id;
   const phi :number = req.body.phi;
   const theta :number = req.body.theta;
@@ -68,31 +70,26 @@ app.post('/waiters', (req, res) => {
     .get()
     .then(querySnapshot => {
       if (querySnapshot.empty) {
-        console.log('Empty QuerySnapshot');
+        // console.log('Empty QuerySnapshot');
         res.send({
-          status: 'keep waiting.'
-          ,skyway_id: null
+          skyway_id: null
         })
       } else {
-        console.log("At least 1 document was found.");
+        // console.log("At least 1 document was found.");
         let noDocFound: Boolean = true;
         querySnapshot.forEach((doc) => {
-          console.log(doc.data().skyway_id + ' ' + skyway_id);
           if (doc.data().skyway_id === skyway_id) {
             // continue
           } else {
             noDocFound = false;
             res.send({
-              status: 'found.'
-              ,skyway_id: doc.id
-              ,doc: doc.data()
+              skyway_id: doc.id
             });
           }
         });
         if (noDocFound) {
           res.send({
-            status: 'keep waiting.'
-            ,skyway_id: null
+            skyway_id: null
           });
         }
       }
@@ -118,25 +115,23 @@ function add_waiter(skyway_id: string, phi: number, theta: number, callback: Fun
     ,created_at: new Date(Date.now())
     ,expired_at: admin.firestore.Timestamp.fromDate(expire_date)
   }
-  console.log(data);
+
   fireStore.collection(COLLECTION_WAITERS)
     .doc(skyway_id)
     .set(data)
     .then(result => {
-      console.log('Set document succeeded.');
+      // console.log('Set document succeeded.');
       const ret = {
         status: 200
         ,response: {
-          status: 'keep wait.'
-          ,skyway_id: null
+          skyway_id: null
           ,created_data: data
-          ,response: result
         }
       }
       callback(ret);
     })
     .catch(err => {
-      console.log('Set document failed.');
+      // console.log('Set document failed.');
       const ret = {
         status: 400
         ,response: {
@@ -149,6 +144,7 @@ function add_waiter(skyway_id: string, phi: number, theta: number, callback: Fun
 }
 
 app.delete('/waiters', (req, res) => {
+  console.log('DELETE /waiters');
   const skyway_id = req.body.skyway_id;
   console.log('delete skyway_id: ' + skyway_id);
 
